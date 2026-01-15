@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historia użycia - Panel Administratora</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <style>
+        :root {
+            --primary-blue: #2962ff; /* Odcień niebieskiego z obrazka */
+            --bg-light: #F5F7FA;
+            --text-dark: #333;
+            --text-light: #777;
+            --border-color: #eee;
+            --status-green-bg: #e8f5e9;
+            --status-green-text: #2e7d32;
+            --status-grey-bg: #f5f5f5;
+            --status-grey-text: #616161;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            padding: 20px;
+            color: var(--text-dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            min-height: 80vh;
+        }
+
+        /* Header (taki sam jak w panelu szafek) */
+        header h1 { font-size: 24px; font-weight: 500; }
+        header p { color: var(--text-light); font-size: 14px; margin-bottom: 25px; }
+
+        /* Tabs Navigation */
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+        .nav-item {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none; /* Link style reset */
+        }
+        .nav-item:hover { color: var(--primary-blue); }
+        .nav-item.active {
+            color: var(--primary-blue);
+            border-bottom: 3px solid var(--primary-blue);
+            font-weight: 500;
+        }
+
+        /* Controls: Filtry i Eksport */
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-btn {
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            color: var(--text-dark);
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover { background-color: #f0f0f0; }
+
+        .filter-btn.active {
+            background-color: var(--primary-blue);
+            color: #fff;
+            border-color: var(--primary-blue);
+        }
+
+        .export-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            border-radius: 5px;
+            color: var(--text-dark);
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .export-btn:hover { background-color: #f9f9f9; }
+
+        /* Tabela */
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .history-table th {
+            text-align: left;
+            padding: 15px;
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .history-table td {
+            padding: 15px;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+            color: #444;
+            vertical-align: middle;
+        }
+
+        .history-table tr:hover {
+            background-color: #fafafa;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 500;
+            gap: 5px;
+        }
+
+        .status-active {
+            background-color: var(--status-green-bg);
+            color: var(--status-green-text);
+        }
+
+        .status-finished {
+            background-color: var(--status-grey-bg);
+            color: var(--status-grey-text);
+            border: 1px solid #ddd;
+        }
+
+        .bold-id {
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>System Zarządzania Szafkami</h1>
+        <p>Panel Administratora</p>
+    </header>
+
+    <nav class="nav-tabs">
+        <a href="/" class="nav-item">
+            <span class="material-icons-outlined">lock</span>
+            Szafki
+        </a>
+        <a href="/historia" class="nav-item active">
+            <span class="material-icons-outlined">history</span>
+            Historia użycia
+        </a>
+    </nav>
+
+    <div class="controls-bar">
+        <div class="filter-group">
+            <a href="?filter=all" class="filter-btn {{ 'active' if active_filter == 'all' else '' }}">Wszystkie</a>
+            <a href="?filter=active" class="filter-btn {{ 'active' if active_filter == 'active' else '' }}">Aktywne</a>
+            <a href="?filter=finished" class="filter-btn {{ 'active' if active_filter == 'finished' else '' }}">Zakończone</a>
+        </div>
+        <button class="export-btn">
+            <span class="material-icons-outlined" style="font-size: 18px;">download</span>
+            Eksportuj CSV
+        </button>
+    </div>
+
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>ID KARTY</th>
+                <th>SZAFKA</th>
+                <th>WEJŚCIE</th>
+                <th>WYJŚCIE</th>
+                <th>CZAS UŻYCIA</th>
+                <th>STATUS</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td class="bold-id">{{ log.card_uid }}</td>
+                <td>#{{ log.locker_number }}</td>
+                <td>{{ log.start_time }}</td>
+                <td>
+                    {% if log.end_time %}
+                        {{ log.end_time }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.duration %}
+                        {{ log.duration }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.is_active %}
+                        <span class="status-badge status-active">Aktywne</span>
+                    {% else %}
+                        <span class="status-badge status-finished">
+                             <span class="material-icons-outlined" style="font-size: 14px;">arrow_forward</span>
+                            Zakończone
+                        </span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align:center; padding: 30px;">Brak wpisów w historii.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
