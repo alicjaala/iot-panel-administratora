@@ -265,7 +265,6 @@
     <div class="lockers-grid">
         {% for locker in lockers %}
         <div class="locker-card {{ 'occupied' if locker['is_occupied'] else 'free' }}">
-
             <div class="card-actions">
                 <button class="action-btn" title="Szczegóły"
                         onclick="showDetails('{{ locker.number }}', '{{ locker.is_occupied }}', '{{ locker.uid }}', '{{ locker.time }}')">
@@ -273,8 +272,9 @@
                 </button>
 
                 {% if locker['is_occupied'] %}
-                <form action="{{ url_for('release_locker', locker_id=locker['id']) }}" method="POST">
-                    <button class="action-btn" title="Zwolnij szafkę" onclick="return confirm('Czy na pewno zwolnić szafkę?')">
+                <form action="{{ url_for('release_locker', locker_id=locker['id']) }}" method="POST" id="form-release-{{ locker['id'] }}">
+                    <button type="button" class="action-btn" title="Zwolnij szafkę" 
+                            onclick="askForRelease('{{ locker['id'] }}', '{{ locker['number'] }}')">
                         <span class="material-icons-outlined icon-red">highlight_off</span>
                     </button>
                 </form>
@@ -294,7 +294,7 @@
                 <span class="locker-info-time">{{ locker['time'] }}</span>
             </div>
             {% endif %}
-            </div>
+        </div>
         {% endfor %}
     </div>
 
@@ -306,6 +306,21 @@
         <div id="modalBody">
             </div>
         <button class="modal-close-btn" onclick="closeModal()">Zamknij</button>
+    </div>
+</div>
+<div id="confirmModal" class="modal-overlay">
+    <div class="modal-content">
+        <div style="margin-bottom:15px;">
+            <span class="material-icons-outlined" style="font-size:48px; color:var(--status-red);">help_outline</span>
+        </div>
+        <h3 class="modal-title">Potwierdzenie</h3>
+        <p class="modal-info">Czy na pewno chcesz zwolnić szafkę <strong id="confirmLockerNumber">#</strong>?</p>
+        <p style="font-size: 13px; color: #7f8c8d; margin-top: 5px;">Ta operacja jest nieodwracalna.</p>
+        
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 25px;">
+            <button class="modal-close-btn" style="background: #bdc3c7;" onclick="closeConfirmModal()">Anuluj</button>
+            <button id="finalConfirmBtn" class="modal-close-btn" style="background: var(--status-red);">Zwolnij szafkę</button>
+        </div>
     </div>
 </div>
 
@@ -354,6 +369,42 @@
             closeModal();
         }
     }
+
+    let currentFormToSubmit = null;
+
+    function askForRelease(lockerId, lockerNumber) {
+        // Zapamiętujemy, który formularz chcemy wysłać
+        currentFormToSubmit = document.getElementById('form-release-' + lockerId);
+        
+        // Ustawiamy numer szafki w tekście modala
+        document.getElementById('confirmLockerNumber').innerText = "#" + lockerNumber;
+        
+        // Pokazujemy modal
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function closeConfirmModal() {
+        document.getElementById('confirmModal').style.display = 'none';
+        currentFormToSubmit = null;
+    }
+
+    // Obsługa kliknięcia przycisku "Zwolnij" w modalu
+    document.getElementById('finalConfirmBtn').onclick = function() {
+        if (currentFormToSubmit) {
+            currentFormToSubmit.submit();
+        }
+    };
+
+    // Dodajemy zamknięcie modala po kliknięciu poza nim (aktualizacja istniejącej funkcji)
+    function closeModalOutside(event) {
+        if (event.target.id === 'lockerModal') {
+            closeModal();
+        }
+        if (event.target.id === 'confirmModal') {
+            closeConfirmModal();
+        }
+    }
+
 </script>
 
 </body>
