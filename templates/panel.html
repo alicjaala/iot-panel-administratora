@@ -308,7 +308,7 @@
         <button class="modal-close-btn" onclick="closeModal()">Zamknij</button>
     </div>
 </div>
-<div id="confirmModal" class="modal-overlay">
+<div id="confirmModal" class="modal-overlay" onclick="closeModalOutside(event)">
     <div class="modal-content">
         <div style="margin-bottom:15px;">
             <span class="material-icons-outlined" style="font-size:48px; color:var(--status-red);">help_outline</span>
@@ -317,9 +317,17 @@
         <p class="modal-info">Czy na pewno chcesz zwolnić szafkę <strong id="confirmLockerNumber">#</strong>?</p>
         <p style="font-size: 13px; color: #7f8c8d; margin-top: 5px;">Ta operacja jest nieodwracalna.</p>
         
-        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 25px;">
-            <button class="modal-close-btn" style="background: #bdc3c7;" onclick="closeConfirmModal()">Anuluj</button>
-            <button id="finalConfirmBtn" class="modal-close-btn" style="background: var(--status-red);">Zwolnij szafkę</button>
+        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 25px; width: 100%;">
+            <button class="modal-close-btn" 
+                    style="background: #bdc3c7; flex: 1; margin-top: 0; white-space: nowrap;" 
+                    onclick="closeConfirmModal()">
+                Anuluj
+            </button>
+            <button id="finalConfirmBtn" 
+                    class="modal-close-btn" 
+                    style="background: var(--status-red); flex: 1; margin-top: 0; white-space: nowrap;">
+                Zwolnij szafkę
+            </button>
         </div>
     </div>
 </div>
