@@ -274,7 +274,7 @@
                 {% if locker['is_occupied'] %}
                 <form action="{{ url_for('release_locker', locker_id=locker['id']) }}" method="POST" id="form-release-{{ locker['id'] }}">
                     <button type="button" class="action-btn" title="Zwolnij szafkę" 
-                            onclick="askForRelease('{{ locker['id'] }}', '{{ locker['number'] }}')">
+                            onclick="askForRelease('{{ locker.id }}', '{{ locker.number }}')">
                         <span class="material-icons-outlined icon-red">highlight_off</span>
                     </button>
                 </form>
