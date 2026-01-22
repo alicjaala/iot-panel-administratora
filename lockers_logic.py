@@ -1,23 +1,20 @@
-#!/usr/bin/env python3
-
 import time
-import RPi.GPIO as GPIO
-from mfrc522 import MFRC522
-import board
-import neopixel
+
 from config import *
-import paho.mqtt.client as mqtt
+
+import RPi.GPIO as GPIO
 import lib.oled.SSD1331 as SSD1331
+import paho.mqtt.client as mqtt
+from mfrc522 import MFRC522
 from PIL import Image, ImageDraw, ImageFont
 
+from constants import (
+    BROKER_HOST, LOCKER_TOPIC_RECEIVE, 
+    LOCKER_TOPIC_SEND, CARD_READ_DELAY)
 
-BROKER_HOST = "10.108.33.123"
-TOPIC_RECIEVE = "lockers/from_server"
-TOPIC_SEND = "lockers/to_server"
+from signal_handler import SignalHandler
+from client_handler import ClientHandler
 
-client = mqtt.Client()
-
-buttonRedState = GPIO.HIGH
 usedFont = ImageFont.truetype('./lib/oled/Font.ttf', 14)
 
 display = None
@@ -55,10 +52,6 @@ def displayInfo(info: str):
 
     display.ShowImage(image2, 0, 0)
 
-def buttonCallback(channel):
-    global buttonRedState
-    buttonRedState = GPIO.input(buttonRed)
-
 def process_message(client, userdata, message):
     try:
         payload = message.payload.decode("utf-8")
@@ -72,41 +65,17 @@ def process_message(client, userdata, message):
     except Exception as e:
         print(e)
 
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print("Subscribing to topic")
-        client.subscribe(TOPIC_RECIEVE)
-    else:
-        print(f"Error, code: {rc}")
-
-def connect_to_broker():
-    client.on_message = process_message
-    client.on_connect = on_connect
-    print("Connecting to broker")
-
-    try:
-        client.connect(BROKER_HOST)
-        client.loop_start()
-    except Exception as e:
-        print(f"Error while connecting to the broker: {e}")
-
-
-def disconnect_from_broker():
-    client.loop_stop()
-    client.disconnect()
-    print("Disconnected from broker")
-
-def call_rfid(uid = ""):
-    client.publish(TOPIC_SEND, f"{uid}")
-
-def readRIFD():
+def run(client: ClientHandler):
+    signal_handler: SignalHandler = SignalHandler()
+    
     reader = MFRC522()
-    GPIO.add_event_detect(buttonRed, GPIO.FALLING, callback=buttonCallback, bouncetime=5)
     firstContact = True
     previousStatus = reader.MI_ERR
 
+    print("Locker station started, waiting for cards...")
+
     try:
-        while buttonRedState != GPIO.LOW:
+        while signal_handler.is_running:
             status, _ = reader.MFRC522_Request(reader.PICC_REQIDL)
 
             while status == reader.MI_OK or previousStatus == reader.MI_OK:
@@ -115,12 +84,13 @@ def readRIFD():
                 if status == reader.MI_OK and firstContact:
 
                     uid_str = "".join([str(x) for x in uid])
-
-                    call_rfid(uid_str)
+                    print(f"Card detected {uid_str}")
+                    
+                    client.publish(uid_str)
 
                     firstContact = False
 
-                time.sleep(0.1)
+                time.sleep(CARD_READ_DELAY)
                 previousStatus = status
                 status, _ = reader.MFRC522_Request(reader.PICC_REQIDL)
 
@@ -128,18 +98,33 @@ def readRIFD():
                 if not firstContact:
                     firstContact = True
 
-        time.sleep(0.1)
-
+    except Exception as e:
+        print(f"Error in the main loop {e}")
     finally:
         GPIO.cleanup()
+        print("Locker station stopped")
 
 def main():
-    connect_to_broker()
+    client: ClientHandler = ClientHandler(
+        broker_host = BROKER_HOST,
+        topic_send = LOCKER_TOPIC_SEND,
+        topic_receive = LOCKER_TOPIC_RECEIVE,
+        on_message = process_message
+    )
+    client.connect()
+    
+    if not client.is_connected:
+        print("Failed to connect to broker, exiting")
+        return
     
     setUpDisplay()
-    readRIFD()
+    
+    try:
+        run(client = client)
+    except:
+        client.disconnect()
 
-    disconnect_from_broker()
+    client.disconnect()
     GPIO.cleanup()
 
 if __name__ == "__main__":
