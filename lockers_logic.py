@@ -3,10 +3,6 @@ import time
 from config import *
 
 import RPi.GPIO as GPIO
-import lib.oled.SSD1331 as SSD1331
-import paho.mqtt.client as mqtt
-from mfrc522 import MFRC522
-from PIL import Image, ImageDraw, ImageFont
 
 from constants import (
     BROKER_HOST, LOCKER_TOPIC_RECEIVE, 
@@ -14,89 +10,43 @@ from constants import (
 
 from signal_handler import SignalHandler
 from client_handler import ClientHandler
+from rfid_reader import RFIDReader
+from oled_display import OLEDDisplay
 
-usedFont = ImageFont.truetype('./lib/oled/Font.ttf', 14)
-
-display = None
-
-def setUpDisplay():
-    global display
-    display = SSD1331.SSD1331()
-    display.Init()
-    display.clear()
-
-    image1 = Image.new("RGB", (display.width, display.height), "BLACK")
-    draw = ImageDraw.Draw(image1)
-
-    draw.text((10, 10), "Tap your card", font=usedFont)
-    display.ShowImage(image1, 0, 0)
-
-
-def displayInfo(info: str):
-    global display
-    display.clear()
-    
-    image1 = Image.new("RGB", (display.width, display.height), "BLACK")
-    draw = ImageDraw.Draw(image1)
-
-    draw.text((10, 10), info, font=usedFont)
-    display.ShowImage(image1, 0, 0)
-
-    time.sleep(5)
-    
-    display.clear()
-
-    image2 = Image.new("RGB", (display.width, display.height), "BLACK")
-    draw = ImageDraw.Draw(image2)
-    draw.text((10, 10), "Tap your card", font=usedFont)
-
-    display.ShowImage(image2, 0, 0)
+display: OLEDDisplay = None
 
 def process_message(client, userdata, message):
+    global display
+    
     try:
         payload = message.payload.decode("utf-8")
 
         if not payload or payload.lower() == "null":
             print("No locker available")
-            displayInfo("No locker free")
+            display.show_error()
+        
         else:
             print(f"Opening locker nr {payload}")
-            displayInfo(f"Locker: {payload}")
+            display.show_locker(payload)
+
     except Exception as e:
         print(e)
 
 def run(client: ClientHandler):
     signal_handler: SignalHandler = SignalHandler()
-    
-    reader = MFRC522()
-    firstContact = True
-    previousStatus = reader.MI_ERR
+    card_reader: RFIDReader = RFIDReader()
 
     print("Locker station started, waiting for cards...")
 
     try:
         while signal_handler.is_running:
-            status, _ = reader.MFRC522_Request(reader.PICC_REQIDL)
+            uid = card_reader.check_for_card()
 
-            while status == reader.MI_OK or previousStatus == reader.MI_OK:
-                status, uid = reader.MFRC522_Anticoll()
-                
-                if status == reader.MI_OK and firstContact:
+            if uid:
+                print(f"Card detected {uid}")
+                client.publish(uid)
 
-                    uid_str = "".join([str(x) for x in uid])
-                    print(f"Card detected {uid_str}")
-                    
-                    client.publish(uid_str)
-
-                    firstContact = False
-
-                time.sleep(CARD_READ_DELAY)
-                previousStatus = status
-                status, _ = reader.MFRC522_Request(reader.PICC_REQIDL)
-
-            else:
-                if not firstContact:
-                    firstContact = True
+            time.sleep(CARD_READ_DELAY)
 
     except Exception as e:
         print(f"Error in the main loop {e}")
@@ -116,16 +66,20 @@ def main():
     if not client.is_connected:
         print("Failed to connect to broker, exiting")
         return
-    
-    setUpDisplay()
-    
+
+    global display
+    display = OLEDDisplay()
+    if display.initialize():
+        display.show_default()
+    else:
+        print("Running without display")
+        
+
     try:
         run(client = client)
-    except:
+    finally:
         client.disconnect()
-
-    client.disconnect()
-    GPIO.cleanup()
+        GPIO.cleanup()
 
 if __name__ == "__main__":
     main()
