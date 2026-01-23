@@ -1,3 +1,4 @@
+import logging
 import time
 
 from config import *
@@ -13,6 +14,8 @@ from client_handler import ClientHandler
 from rfid_reader import RFIDReader
 from oled_display import OLEDDisplay
 
+logger = logging.getLogger(__name__)
+
 display: OLEDDisplay = None
 
 def process_message(client, userdata, message):
@@ -22,39 +25,44 @@ def process_message(client, userdata, message):
         payload = message.payload.decode("utf-8")
 
         if not payload or payload.lower() == "null":
-            print("No locker available")
+            logger.info("No locker available")
             display.show_error()
         
         else:
-            print(f"Opening locker nr {payload}")
+            logger.info(f"Opening locker nr {payload}")
             display.show_locker(payload)
 
     except Exception as e:
-        print(e)
+        logger.error(f"Error processing message: {e}")
 
 def run(client: ClientHandler):
     signal_handler: SignalHandler = SignalHandler()
     card_reader: RFIDReader = RFIDReader()
 
-    print("Locker station started, waiting for cards...")
+    logger.info("Locker station started, waiting for cards...")
 
     try:
         while signal_handler.is_running:
             uid = card_reader.check_for_card()
 
             if uid:
-                print(f"Card detected {uid}")
+                logger.info(f"Card detected: {uid}")
                 client.publish(uid)
 
             time.sleep(CARD_READ_DELAY)
 
     except Exception as e:
-        print(f"Error in the main loop {e}")
+        logger.error(f"Error in the main loop: {e}")
     finally:
         GPIO.cleanup()
-        print("Locker station stopped")
+        logger.info("Locker station stopped")
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
     client: ClientHandler = ClientHandler(
         broker_host = BROKER_HOST,
         topic_send = LOCKER_TOPIC_SEND,
@@ -64,7 +72,7 @@ def main():
     client.connect()
     
     if not client.is_connected:
-        print("Failed to connect to broker, exiting")
+        logger.error("Failed to connect to broker, exiting")
         return
 
     global display
@@ -72,7 +80,7 @@ def main():
     if display.initialize():
         display.show_default()
     else:
-        print("Running without display")
+        logger.warning("Running without display")
         
 
     try:

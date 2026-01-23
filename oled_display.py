@@ -1,8 +1,11 @@
+import logging
 import time
 
 import lib.oled.SSD1331 as SSD1331
 from PIL import Image, ImageDraw, ImageFont
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 class OLEDDisplay:
     
@@ -20,7 +23,7 @@ class OLEDDisplay:
 
             return True
         except Exception as e:
-            print(f"Display initialization failed. Error: {e}")
+            logger.error(f"Display initialization failed: {e}")
             return False
     
     def show_default(self):
