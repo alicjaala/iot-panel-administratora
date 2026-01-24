@@ -7,8 +7,8 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tajny_klucz_do_sesji'
 
 # tu trzeba dać ip serwera, który będzie wysyłał jsony
-BACKEND_URL = "http://192.168.1.10:5000"
-MOCK_MODE = True
+BACKEND_URL = "http://127.0.0.1:5000"
+MOCK_MODE = False
 
 # WAŻNE RZECZY
 # BACKEND MUSI MIEĆ DOKŁADNIE TAKIE ENDPOINTY (ALBO MY MUSIMY ZMIENIĆ TU)
@@ -82,8 +82,8 @@ def dashboard():
         entries_source = MOCK_ENTRIES_TABLE
     else:
         try:
-            resp_lockers = requests.get(f"{BACKEND_URL}/api/szafki")
-            resp_entries = requests.get(f"{BACKEND_URL}/api/historia")
+            resp_lockers = requests.get(f"{BACKEND_URL}/api/lockers")
+            resp_entries = requests.get(f"{BACKEND_URL}/api/history")
 
             if resp_lockers.status_code == 200 and resp_entries.status_code == 200:
                 lockers_source = resp_lockers.json()
@@ -144,7 +144,7 @@ def open_locker(locker_id):
                     })
                 break
     else:
-        requests.post(f"{BACKEND_URL}/api/otworz/{locker_id}")
+        requests.post(f"{BACKEND_URL}/api/open/{locker_id}")
 
     return redirect(url_for('dashboard'))
 
@@ -165,7 +165,7 @@ def release_locker(locker_id):
                     entry['EXIT_TIMESTAMP'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     break
     else:
-        requests.post(f"{BACKEND_URL}/api/zwolnij/{locker_id}")
+        requests.post(f"{BACKEND_URL}/api/release/{locker_id}")
 
     return redirect(url_for('dashboard'))
 
@@ -176,27 +176,18 @@ def history():
 
     if MOCK_MODE:
         entries_source = MOCK_ENTRIES_TABLE
-        lockers_source = MOCK_LOCKERS_TABLE
     else:
         try:
-            resp_entries = requests.get(f"{BACKEND_URL}/api/historia")
-            resp_lockers = requests.get(
-                f"{BACKEND_URL}/api/szafki")
+            resp_entries = requests.get(f"{BACKEND_URL}/api/history")
 
             if resp_entries.status_code == 200:
                 entries_source = resp_entries.json()
             else:
                 entries_source = []
 
-            if resp_lockers.status_code == 200:
-                lockers_source = resp_lockers.json()
-            else:
-                lockers_source = []
-
         except requests.exceptions.RequestException:
             flash("Błąd połączenia z historią", "danger")
             entries_source = []
-            lockers_source = []
 
     display_logs = []
 
@@ -210,15 +201,9 @@ def history():
         if filter_type == 'finished' and is_active:
             continue
 
-        current_locker_nr = "-"
-        if is_active:
-            locker = next((l for l in lockers_source if l['UID'] == entry['UID']), None)
-            if locker:
-                current_locker_nr = str(locker['NR'])
-
         display_logs.append({
             "card_uid": entry['UID'],
-            "locker_number": current_locker_nr,
+            "locker_number": str(entry['NR']) if entry['NR'] is not None else "-",
             "start_time": entry['ENTRY_TIMESTAMP'],
             "end_time": entry['EXIT_TIMESTAMP'],
             "duration": calculate_duration(entry['ENTRY_TIMESTAMP'], entry['EXIT_TIMESTAMP']),

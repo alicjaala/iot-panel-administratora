@@ -1,5 +1,6 @@
 # MQTT config
-BROKER_HOST = "10.108.33.123"
+# BROKER_HOST = "10.108.33.123"
+BROKER_HOST = "localhost"
 
 LOCKER_TOPIC_RECEIVE = "lockers/from_server"
 LOCKER_TOPIC_SEND = "lockers/to_server"
@@ -14,3 +15,7 @@ FONT_PATH = './lib/oled/Font.ttf'
 FONT_SIZE = 14
 DEFAULT_MESSAGE = "Tap your card"
 NO_LOCKERS_MESSAGE = "No free lockers"
+
+# Backend
+NUM_OF_LOCKERS = 10
+DB_NAME = "lockers.db"
