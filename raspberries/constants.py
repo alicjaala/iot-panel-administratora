@@ -19,3 +19,6 @@ NO_LOCKERS_MESSAGE = "No free lockers"
 # Backend
 NUM_OF_LOCKERS = 10
 DB_NAME = "lockers.db"
+
+FRONT_URL = "http://127.0.0.1:5001"
+FRONTEND_WEBHOOK = f"{FRONT_URL}/webhook/refresh"

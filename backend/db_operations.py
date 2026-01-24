@@ -25,13 +25,13 @@ def allocate_or_retrieve_locker(uid):
         row = cursor.fetchone()
         
         if row:
-            return row['nr']
+            return row['nr'], False
         
         cursor.execute("SELECT nr FROM lockers WHERE uid IS NULL LIMIT 1")
         row = cursor.fetchone()
         
         if not row:
-            return None
+            return None, False
         
         locker_nr = row['nr']
         
@@ -44,12 +44,12 @@ def allocate_or_retrieve_locker(uid):
         """, (locker_nr, uid))
         
         conn.commit()
-        return locker_nr
+        return locker_nr, True
 
     except Exception as e:
         conn.rollback()
         print(f"Error: {e}")
-        return None
+        return None, False
     
     finally:
         conn.close()
@@ -71,19 +71,21 @@ def process_gate_event(uid):
             cursor.execute("UPDATE lockers SET uid = NULL WHERE uid = ?", (uid,))
             conn.commit()
             print(f"{uid} exit")
+            return True
 
         else:
             cursor.execute("INSERT INTO entries (uid, entry_tmsp) VALUES (?, ?)", (uid, tmsp))
             conn.commit()
             print(f"{uid} enter")
+            return True
             
     except Exception as e:
         conn.rollback()
         print(f"Error processing gate: {e}")
+        return False
 
     finally:
         conn.close()
-
 
 
 def _get_all_helper(query):

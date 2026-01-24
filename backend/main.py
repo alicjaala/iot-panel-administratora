@@ -1,4 +1,5 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
+import requests
 from flask_mqtt import Mqtt
 import os, sys
 
@@ -21,6 +22,13 @@ app.config['MQTT_TLS_ENABLED'] = False
 mqtt = Mqtt(app)
 
 
+def notify_frontend():
+    try:
+        requests.post(const.FRONTEND_WEBHOOK, json={}, timeout=0.1)
+    except:
+        pass
+
+
 @mqtt.on_connect()
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -36,15 +44,19 @@ def on_message(client, userdata, message):
     try:
         uid = message.payload.decode("utf-8")
         topic = message.topic
+        db_changed = False
 
         if topic == const.LOCKER_TOPIC_SEND:
-            locker_nr = db.allocate_or_retrieve_locker(uid)
+            locker_nr, db_changed = db.allocate_or_retrieve_locker(uid)
             
             mess = str(locker_nr) if locker_nr is not None else "null"
             client.publish(const.LOCKER_TOPIC_RECEIVE, mess)
 
         elif topic == const.GATE_TOPIC_SEND:
-            db.process_gate_event(uid)
+            db_changed = db.process_gate_event(uid)
+
+        if db_changed:
+            notify_frontend()
 
     except Exception as e:
         print(f"Error handling MQTT message: {e}")
@@ -100,6 +112,7 @@ def api_release(locker_id):
     success = db.force_release_locker(locker_id)
 
     if success:
+        notify_frontend()
         return jsonify({"status": "released", "locker": locker_id})
     else:
         return jsonify({"status": "ignored", "message": "Locker was not occupied"}), 200

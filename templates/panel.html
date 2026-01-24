@@ -177,6 +177,7 @@
 
         .icon-blue { color: #448aff; font-size: 18px; }
         .icon-red { color: #ff5252; font-size: 18px; }
+        .icon-orange { color: #ff9100; font-size: 18px; }
 
         /* --- STYLE OKNA MODALNEGO (POP-UP) --- */
         .modal-overlay {
@@ -266,6 +267,13 @@
         {% for locker in lockers %}
         <div class="locker-card {{ 'occupied' if locker['is_occupied'] else 'free' }}">
             <div class="card-actions">
+                <form action="{{ url_for('open_locker', locker_id=locker['id']) }}" method="POST" id="form-open-{{ locker['id'] }}" style="display:inline;">
+                    <button type="button" class="action-btn" title="Otwórz zdalnie"
+                            onclick="askForOpen('{{ locker.id }}', '{{ locker.number }}')">
+                        <span class="material-icons-outlined icon-orange">vpn_key</span>
+                    </button>
+                </form>               
+
                 <button class="action-btn" title="Szczegóły"
                         onclick="showDetails('{{ locker.number }}', '{{ locker.is_occupied }}', '{{ locker.uid }}', '{{ locker.time }}')">
                     <span class="material-icons-outlined icon-blue">info</span>
@@ -311,11 +319,12 @@
 <div id="confirmModal" class="modal-overlay" onclick="closeModalOutside(event)">
     <div class="modal-content">
         <div style="margin-bottom:15px;">
-            <span class="material-icons-outlined" style="font-size:48px; color:var(--status-red);">help_outline</span>
+            <span class="material-icons-outlined" id="confirmIcon" style="font-size:48px;">help_outline</span>
         </div>
-        <h3 class="modal-title">Potwierdzenie</h3>
-        <p class="modal-info">Czy na pewno chcesz zwolnić szafkę <strong id="confirmLockerNumber">#</strong>?</p>
-        <p style="font-size: 13px; color: #7f8c8d; margin-top: 5px;">Ta operacja jest nieodwracalna.</p>
+        
+        <h3 class="modal-title" id="confirmTitle">Potwierdzenie</h3>
+        
+        <p class="modal-info" id="confirmMessage">Czy na pewno?</p>
         
         <div style="display: flex; gap: 12px; justify-content: center; margin-top: 25px; width: 100%;">
             <button class="modal-close-btn" 
@@ -325,8 +334,8 @@
             </button>
             <button id="finalConfirmBtn" 
                     class="modal-close-btn" 
-                    style="background: var(--status-red); flex: 1; margin-top: 0; white-space: nowrap;">
-                Zwolnij szafkę
+                    style="flex: 1; margin-top: 0; white-space: nowrap;">
+                Potwierdź
             </button>
         </div>
     </div>
@@ -380,14 +389,37 @@
 
     let currentFormToSubmit = null;
 
+    function askForOpen(lockerId, lockerNumber) {
+        currentFormToSubmit = document.getElementById('form-open-' + lockerId);
+        
+        document.getElementById('confirmTitle').innerText = "Otwarcie szafki";
+        document.getElementById('confirmMessage').innerHTML = `Czy otworzyć zamki w szafce <strong style="color:#ff9100">#${lockerNumber}</strong>?`;
+        
+        const btn = document.getElementById('finalConfirmBtn');
+        btn.innerText = "Otwórz szafkę";
+        btn.style.background = "#ff9100";
+        
+        const icon = document.getElementById('confirmIcon');
+        icon.innerText = "vpn_key";
+        icon.style.color = "#ff9100";
+
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
     function askForRelease(lockerId, lockerNumber) {
-        // Zapamiętujemy, który formularz chcemy wysłać
         currentFormToSubmit = document.getElementById('form-release-' + lockerId);
         
-        // Ustawiamy numer szafki w tekście modala
-        document.getElementById('confirmLockerNumber').innerText = "#" + lockerNumber;
+        document.getElementById('confirmTitle').innerText = "Zwolnienie szafki";
+        document.getElementById('confirmMessage').innerHTML = `Czy zwolnić szafkę <strong style="color:#ff1744">#${lockerNumber}</strong>?<br><span style="font-size:12px; color:#777">Ta operacja zakończy historię użycia.</span>`;
         
-        // Pokazujemy modal
+        const btn = document.getElementById('finalConfirmBtn');
+        btn.innerText = "Zwolnij szafkę";
+        btn.style.background = "#ff1744";
+        
+        const icon = document.getElementById('confirmIcon');
+        icon.innerText = "warning_amber";
+        icon.style.color = "#ff1744";
+
         document.getElementById('confirmModal').style.display = 'flex';
     }
 
@@ -396,7 +428,6 @@
         currentFormToSubmit = null;
     }
 
-    // Obsługa kliknięcia przycisku "Zwolnij" w modalu
     document.getElementById('finalConfirmBtn').onclick = function() {
         if (currentFormToSubmit) {
             currentFormToSubmit.submit();
@@ -413,6 +444,17 @@
         }
     }
 
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+<script>
+    const socket = io();
+
+    socket.on('force_reload', function() {
+        console.log("Reloading page...");
+        window.location.reload();
+    });
 </script>
 
 </body>

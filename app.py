@@ -1,10 +1,13 @@
-from flask import Flask, render_template, redirect, url_for, flash, request
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask_socketio import SocketIO
 import requests
 from datetime import datetime, timedelta
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tajny_klucz_do_sesji'
+
+socketio = SocketIO(app)
 
 # tu trzeba dać ip serwera, który będzie wysyłał jsony
 BACKEND_URL = "http://127.0.0.1:5000"
@@ -213,5 +216,16 @@ def history():
     return render_template('historia.html', logs=display_logs, active_filter=filter_type)
 
 
+@app.route('/webhook/refresh', methods=['POST'])
+def webhook_refresh():
+    """
+    Received signal from Backend. 
+    Tell all connected browsers to reload the page.
+    """
+    print("Event received! Reloading browsers...")
+    socketio.emit('force_reload')
+    return jsonify({"status": "ok"}), 200
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    socketio.run(app, debug=True, port=5001)
