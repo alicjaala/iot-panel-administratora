@@ -7,16 +7,18 @@ import RPi.GPIO as GPIO
 
 from constants import (
     BROKER_HOST, LOCKER_TOPIC_RECEIVE, 
-    LOCKER_TOPIC_SEND, CARD_READ_DELAY)
+    LOCKER_TOPIC_SEND, CARD_READ_DELAY, MESSAGE_DISPLAY_TIME)
 
 from signal_handler import SignalHandler
 from client_handler import ClientHandler
 from rfid_reader import RFIDReader
-from oled_display import OLEDDisplay
+from oled_display import OLEDDisplay, OnDisplay
 
 logger = logging.getLogger(__name__)
 
 display: OLEDDisplay = None
+
+next_read = 0
 
 def process_message(client, userdata, message):
     global display
@@ -36,6 +38,8 @@ def process_message(client, userdata, message):
         logger.error(f"Error processing message: {e}")
 
 def run(client: ClientHandler):
+    global display
+
     signal_handler: SignalHandler = SignalHandler()
     card_reader: RFIDReader = RFIDReader()
 
@@ -43,9 +47,14 @@ def run(client: ClientHandler):
 
     try:
         while signal_handler.is_running:
+            
+            if time.time() > next_read and display.currently_displaying != OnDisplay.DEFAULT:
+                display.show_default()
+
             uid = card_reader.check_for_card()
 
-            if uid:
+            if uid and time.time() > next_read:
+                next_read = time.time() + MESSAGE_DISPLAY_TIME
                 logger.info(f"Card detected: {uid}")
                 client.publish(uid)
 

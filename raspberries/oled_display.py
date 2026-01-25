@@ -1,5 +1,5 @@
 import logging
-import time
+from enum import Enum
 
 import lib.oled.SSD1331 as SSD1331
 from PIL import Image, ImageDraw, ImageFont
@@ -9,6 +9,11 @@ from constants import NO_LOCKERS_MESSAGE, DEFAULT_MESSAGE, FONT_PATH, FONT_SIZE
 
 logger = logging.getLogger(__name__)
 
+class OnDisplay(Enum):
+    DEFAULT = 1
+    LOCKER_NR = 2
+    ERROR = 3
+
 class OLEDDisplay:
     
     def __init__(self):
@@ -16,6 +21,7 @@ class OLEDDisplay:
         self._font_path = FONT_PATH
         self._font_size = FONT_SIZE
         self._font: Optional[ImageFont.FreeTypeFont] = None
+        self.currently_displaying: OnDisplay = None 
     
     def initialize(self) -> bool:
         try:
@@ -30,17 +36,15 @@ class OLEDDisplay:
     
     def show_default(self):
         self._draw_text(DEFAULT_MESSAGE)
+        self.currently_displaying = OnDisplay.DEFAULT
 
     def show_locker(self, locker_number: str):
-        self._show_info(f"Locker: {locker_number}")
+        self._draw_text(f"Locker: {locker_number}")
+        self.currently_displaying = OnDisplay.LOCKER_NR
     
     def show_error(self):
-        self._show_info(NO_LOCKERS_MESSAGE)
-
-    def _show_info(self, message: str):
-        self._draw_text(message)
-        time.sleep(5)
-        self.show_default()
+        self._draw_text(NO_LOCKERS_MESSAGE)
+        self.currently_displaying = OnDisplay.ERROR
 
     def _draw_text(self, text: str):
         if not self._display:

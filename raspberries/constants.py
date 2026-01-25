@@ -15,6 +15,7 @@ FONT_PATH = './lib/oled/Font.ttf'
 FONT_SIZE = 14
 DEFAULT_MESSAGE = "Tap your card"
 NO_LOCKERS_MESSAGE = "No free lockers"
+MESSAGE_DISPLAY_TIME = 5
 
 # Backend
 NUM_OF_LOCKERS = 10
