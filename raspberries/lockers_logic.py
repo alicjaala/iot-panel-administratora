@@ -1,8 +1,6 @@
 import logging
 import time
 
-from config import *
-
 import RPi.GPIO as GPIO
 
 from constants import (
@@ -17,8 +15,6 @@ from oled_display import OLEDDisplay, OnDisplay
 logger = logging.getLogger(__name__)
 
 display: OLEDDisplay = None
-
-next_read = 0
 
 def process_message(client, userdata, message):
     global display
@@ -40,6 +36,8 @@ def process_message(client, userdata, message):
 def run(client: ClientHandler):
     global display
 
+    next_read = 0
+    
     signal_handler: SignalHandler = SignalHandler()
     card_reader: RFIDReader = RFIDReader()
 

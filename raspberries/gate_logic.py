@@ -1,9 +1,5 @@
-#!/usr/bin/env python3
-
 import logging
 import time
-
-from config import *
 
 import RPi.GPIO as GPIO
 

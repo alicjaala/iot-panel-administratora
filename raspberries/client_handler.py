@@ -35,6 +35,7 @@ class ClientHandler:
         try:
             self._client.connect(self._broker_host)
             self._client.loop_start()
+            self._is_connected = True
         except Exception as e:
             logger.error(f"Error while connecting to the broker: {e}")
 

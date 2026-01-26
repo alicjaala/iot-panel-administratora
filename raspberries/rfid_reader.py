@@ -1,5 +1,3 @@
-from config import *
-
 from mfrc522 import MFRC522
 
 class RFIDReader:
