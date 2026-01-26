@@ -1,63 +1,14 @@
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_socketio import SocketIO
 import requests
-from datetime import datetime, timedelta
-
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tajny_klucz_do_sesji'
 
 socketio = SocketIO(app)
 
-# tu trzeba dać ip serwera, który będzie wysyłał jsony
 BACKEND_URL = "http://127.0.0.1:5000"
-MOCK_MODE = False
-
-# WAŻNE RZECZY
-# BACKEND MUSI MIEĆ DOKŁADNIE TAKIE ENDPOINTY (ALBO MY MUSIMY ZMIENIĆ TU)
-# GET /api/szafki
-# GET /api/historia
-# POST /api/otworz/<id>
-# POST /api/zwolnij/<id>
-
-# muszą być dokładnie takie same klucze w jsonach
-# musi być taki sam format daty
-
-
-MOCK_LOCKERS_TABLE = [
-                         {"NR": 1, "UID": None},
-                         {"NR": 2, "UID": None},
-                         {"NR": 3, "UID": "A1B2C3D4"},
-                         {"NR": 4, "UID": None},
-                         {"NR": 5, "UID": None},
-                         {"NR": 6, "UID": None},
-                         {"NR": 7, "UID": None},
-                         {"NR": 8, "UID": "E5F6G7H8"},
-                         {"NR": 9, "UID": None},
-                         {"NR": 10, "UID": None},
-                         {"NR": 11, "UID": None},
-                         {"NR": 12, "UID": "I9J0K1L2"},
-                         {"NR": 13, "UID": None},
-                         {"NR": 14, "UID": None},
-                         {"NR": 15, "UID": None},
-                         {"NR": 16, "UID": "M3N4O5P6"},
-                     ] + [{"NR": i, "UID": None} for i in range(17, 25)]
-
-teraz = datetime.now()
-MOCK_ENTRIES_TABLE = [
-    {"ID": 101, "UID": "A1B2C3D4", "ENTRY_TIMESTAMP": (teraz - timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S"),
-     "EXIT_TIMESTAMP": None},
-    {"ID": 102, "UID": "E5F6G7H8",
-     "ENTRY_TIMESTAMP": (teraz - timedelta(hours=2, minutes=30)).strftime("%Y-%m-%d %H:%M:%S"), "EXIT_TIMESTAMP": None},
-    {"ID": 103, "UID": "I9J0K1L2", "ENTRY_TIMESTAMP": (teraz - timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S"),
-     "EXIT_TIMESTAMP": None},
-    {"ID": 104, "UID": "M3N4O5P6",
-     "ENTRY_TIMESTAMP": (teraz - timedelta(hours=1, minutes=30)).strftime("%Y-%m-%d %H:%M:%S"), "EXIT_TIMESTAMP": None},
-
-    {"ID": 50, "UID": "OLD_USER1", "ENTRY_TIMESTAMP": "2026-01-10 08:00:00", "EXIT_TIMESTAMP": "2026-01-10 09:30:00"},
-    {"ID": 51, "UID": "OLD_USER2", "ENTRY_TIMESTAMP": "2026-01-11 12:00:00", "EXIT_TIMESTAMP": "2026-01-11 13:00:00"},
-]
-
 
 
 def calculate_duration(start_str, end_str=None):
@@ -79,26 +30,21 @@ def calculate_duration(start_str, end_str=None):
 
 @app.route('/')
 def dashboard():
-    # 1. ZDECYDUJ SKĄD BRAĆ DANE (MOCK CZY API)
-    if MOCK_MODE:
-        lockers_source = MOCK_LOCKERS_TABLE
-        entries_source = MOCK_ENTRIES_TABLE
-    else:
-        try:
-            resp_lockers = requests.get(f"{BACKEND_URL}/api/lockers")
-            resp_entries = requests.get(f"{BACKEND_URL}/api/history")
+    try:
+        resp_lockers = requests.get(f"{BACKEND_URL}/api/lockers")
+        resp_entries = requests.get(f"{BACKEND_URL}/api/history")
 
-            if resp_lockers.status_code == 200 and resp_entries.status_code == 200:
-                lockers_source = resp_lockers.json()
-                entries_source = resp_entries.json()
-            else:
-                flash("Błąd pobierania danych z backendu", "danger")
-                lockers_source = []
-                entries_source = []
-        except requests.exceptions.RequestException:
-            flash("Nie można połączyć się z serwerem", "danger")
+        if resp_lockers.status_code == 200 and resp_entries.status_code == 200:
+            lockers_source = resp_lockers.json()
+            entries_source = resp_entries.json()
+        else:
+            flash("Błąd pobierania danych z backendu (zły status)", "danger")
             lockers_source = []
             entries_source = []
+    except requests.exceptions.RequestException:
+        flash("Nie można połączyć się z serwerem backendu", "danger")
+        lockers_source = []
+        entries_source = []
 
     processed_lockers = []
 
@@ -130,45 +76,23 @@ def dashboard():
 
     return render_template('panel.html', lockers=processed_lockers, total=total, occupied=occupied, free=free)
 
-# rule musi być takie samo na serwerze łączącym się z bazą
+
 @app.route('/otworz/<int:locker_id>', methods=['POST'])
 def open_locker(locker_id):
-    if MOCK_MODE:
-        for row in MOCK_LOCKERS_TABLE:
-            if row['NR'] == locker_id:
-                if row['UID'] is None:
-                    new_uid = "TEST_USER"
-                    row['UID'] = new_uid
-                    MOCK_ENTRIES_TABLE.append({
-                        "ID": 999,
-                        "UID": new_uid,
-                        "ENTRY_TIMESTAMP": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "EXIT_TIMESTAMP": None
-                    })
-                break
-    else:
+    try:
         requests.post(f"{BACKEND_URL}/api/open/{locker_id}")
+    except requests.exceptions.RequestException:
+        flash("Błąd połączenia podczas otwierania szafki", "danger")
 
     return redirect(url_for('dashboard'))
 
 
 @app.route('/zwolnij/<int:locker_id>', methods=['POST'])
 def release_locker(locker_id):
-    if MOCK_MODE:
-        target_uid = None
-        for row in MOCK_LOCKERS_TABLE:
-            if row['NR'] == locker_id:
-                target_uid = row['UID']
-                row['UID'] = None
-                break
-
-        if target_uid:
-            for entry in MOCK_ENTRIES_TABLE:
-                if entry['UID'] == target_uid and entry['EXIT_TIMESTAMP'] is None:
-                    entry['EXIT_TIMESTAMP'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    break
-    else:
+    try:
         requests.post(f"{BACKEND_URL}/api/release/{locker_id}")
+    except requests.exceptions.RequestException:
+        flash("Błąd połączenia podczas zwalniania szafki", "danger")
 
     return redirect(url_for('dashboard'))
 
@@ -177,20 +101,18 @@ def release_locker(locker_id):
 def history():
     filter_type = request.args.get('filter', 'all')
 
-    if MOCK_MODE:
-        entries_source = MOCK_ENTRIES_TABLE
-    else:
-        try:
-            resp_entries = requests.get(f"{BACKEND_URL}/api/history")
+    try:
+        resp_entries = requests.get(f"{BACKEND_URL}/api/history")
 
-            if resp_entries.status_code == 200:
-                entries_source = resp_entries.json()
-            else:
-                entries_source = []
-
-        except requests.exceptions.RequestException:
-            flash("Błąd połączenia z historią", "danger")
+        if resp_entries.status_code == 200:
+            entries_source = resp_entries.json()
+        else:
             entries_source = []
+            flash("Błąd pobierania historii", "warning")
+
+    except requests.exceptions.RequestException:
+        flash("Błąd połączenia z historią", "danger")
+        entries_source = []
 
     display_logs = []
 
@@ -204,9 +126,11 @@ def history():
         if filter_type == 'finished' and is_active:
             continue
 
+        locker_nr = str(entry.get('NR')) if entry.get('NR') is not None else "-"
+
         display_logs.append({
             "card_uid": entry['UID'],
-            "locker_number": str(entry['NR']) if entry['NR'] is not None else "-",
+            "locker_number": locker_nr,
             "start_time": entry['ENTRY_TIMESTAMP'],
             "end_time": entry['EXIT_TIMESTAMP'],
             "duration": calculate_duration(entry['ENTRY_TIMESTAMP'], entry['EXIT_TIMESTAMP']),
@@ -218,11 +142,7 @@ def history():
 
 @app.route('/webhook/refresh', methods=['POST'])
 def webhook_refresh():
-    """
-    Received signal from Backend. 
-    Tell all connected browsers to reload the page.
-    """
-    print("Event received! Reloading browsers...")
+    print("Odebrano sygnał webhook! Odświeżam przeglądarki...")
     socketio.emit('force_reload')
     return jsonify({"status": "ok"}), 200
 
