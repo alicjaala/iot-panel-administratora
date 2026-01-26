@@ -76,13 +76,11 @@ def process_gate_event(uid):
             
             cursor.execute("UPDATE lockers SET uid = NULL WHERE uid = ?", (uid,))
             conn.commit()
-            print(f"{uid} exit")
             return True
 
         else:
             cursor.execute("INSERT INTO entries (uid, entry_tmsp) VALUES (?, ?)", (uid, tmsp))
             conn.commit()
-            print(f"{uid} enter")
             return True
             
     except Exception as e:
