@@ -49,8 +49,9 @@ def on_message(client, userdata, message):
         if topic == const.LOCKER_TOPIC_SEND:
             locker_nr, db_changed = db.allocate_or_retrieve_locker(uid)
             
-            mess = str(locker_nr) if locker_nr is not None else "null"
-            client.publish(const.LOCKER_TOPIC_RECEIVE, mess)
+            if locker_nr != -1:
+                mess = str(locker_nr) if locker_nr is not None else "null"
+                client.publish(const.LOCKER_TOPIC_RECEIVE, mess)
 
         elif topic == const.GATE_TOPIC_SEND:
             db_changed = db.process_gate_event(uid)

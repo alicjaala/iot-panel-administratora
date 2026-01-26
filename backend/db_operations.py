@@ -21,6 +21,12 @@ def allocate_or_retrieve_locker(uid):
     cursor = conn.cursor()
     
     try:
+        cursor.execute("SELECT * FROM entries WHERE uid = ? AND exit_tmsp IS NULL", (uid,))
+        row = cursor.fetchone()
+
+        if not row:
+            return -1, False
+
         cursor.execute("SELECT nr FROM lockers WHERE uid = ?", (uid,))
         row = cursor.fetchone()
         
@@ -49,7 +55,7 @@ def allocate_or_retrieve_locker(uid):
     except Exception as e:
         conn.rollback()
         print(f"Error: {e}")
-        return None, False
+        return -1, False
     
     finally:
         conn.close()
